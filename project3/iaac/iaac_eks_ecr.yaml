@@ -266,6 +266,12 @@ Outputs:
     Export:
       Name: !Sub ${ClusterName}-VPCID
 
+  PublicSubnets:
+    Description: A list of the public subnets
+    Value: !Join [ ",", [ !Ref PublicSubnet1, !Ref PublicSubnet2 ]]
+    Export:
+      Name: !Sub ${ClusterName}-PublicSubnets
+
   ClusterName:
     Description: The name of the EKS cluster
     Value: !Ref ClusterName

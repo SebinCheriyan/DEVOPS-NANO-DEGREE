@@ -16,11 +16,11 @@ Resources:
       Description: A CodeBuild project for the coworking app.
       Source:
         Type: GITHUB
-        Location: https://github.com/SebinCheriyan/DEVOPS-NANO-DEGREE  # Replace with your actual GitHub repo URL
+        Location: https://github.com/SebinCheriyan/DEVOPS-NANO-DEGREE
         Auth:
           Type: SECRETS_MANAGER
-          Resource: arn:aws:secretsmanager:us-east-1:112468614268:secret:seb_github_secret-wQSAH8  # Replace with your GitHub OAuth token ARN from Secrets Manager
-        buildspec: project3/config/buildspec.yml
+          Resource: arn:aws:secretsmanager:us-east-1:112468614268:secret:seb_github_secret-wQSAH8
+        BuildSpec: project3/analytics/buildspec.yml
       Artifacts:
         Type: NO_ARTIFACTS
       Environment:
@@ -42,16 +42,19 @@ Resources:
             Value: "0.0.1"
             Type: PLAINTEXT
       ServiceRole: !GetAtt CodeBuildServiceRole.Arn
-      VpcConfig:
-        VpcId:
-          Fn::ImportValue:
-            !Sub "${ClusterName}-VPCID"
+      # VpcConfig:
+      #   VpcId:
+      #     Fn::ImportValue:
+      #       !Sub "${ClusterName}-VPCID"
+      #   Subnets:
+      #     Fn::ImportValue:
+      #       Sub "${ClusterName}-PublicSubnets"
       LogsConfig:
         CloudWatchLogs:
           Status: ENABLED
           GroupName: /aws/codebuild/coworking  # Name of the CloudWatch log group
 
-  # IAM Role for CodeBuild with ECR Policy
+  # IAM Role for CodeBuild with ECR, CloudWatch Logs, and Secrets Manager Access
   CodeBuildServiceRole:
     Type: AWS::IAM::Role
     Properties:
@@ -69,9 +72,27 @@ Resources:
             Statement:
               - Effect: Allow
                 Action: 
-                  - ecr:*
+                  - ecr:*  # Full ECR Access
                 Resource: "*"
-
+        - PolicyName: CodeBuildCloudWatchLogsPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup  # Allows creating log groups
+                  - logs:CreateLogStream # Allows creating log streams
+                  - logs:PutLogEvents   # Allows putting log events
+                  - logs:DescribeLogStreams # Allows describing log streams
+                Resource: "arn:aws:logs:us-east-1:112468614268:log-group:/aws/codebuild/*"
+        - PolicyName: CodeBuildSecretsManagerPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue  # Allows retrieving secrets
+                Resource: "arn:aws:secretsmanager:us-east-1:112468614268:secret:seb_github_secret-wQSAH8"
 
 Outputs:
   CodeBuildProjectName:
