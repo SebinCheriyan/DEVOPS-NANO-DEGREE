@@ -62,14 +62,15 @@ Resources:
             Principal:
               Service: codebuild.amazonaws.com
             Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly  # Read-only access to ECR
-        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser # Enhanced access to ECR (upload images)
-        - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess  # Full access to CloudWatch Logs
-        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy  # Permissions for CloudWatch Agent
-      Tags:
-        - Key: Name
-          Value: !Sub 'Coworking-CodeBuildServiceRole'
+      Policies:
+        - PolicyName: FullAccessToECR
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: 
+                  - ecr:*
+                Resource: "*"
 
 
 Outputs:
