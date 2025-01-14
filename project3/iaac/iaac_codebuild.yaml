@@ -1,6 +1,12 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: CloudFormation template to create an AWS CodeBuild project for Udacity Project (coworking).
 
+Parameters:
+  ClusterName:
+    Type: String
+    Default: EKS-Cluster-Udacity-Project
+    Description: The name of the EKS cluster associated with this codebuild.
+
 Resources:
   # CodeBuild Project
   CoworkingCodeBuildProject:
@@ -37,7 +43,9 @@ Resources:
             Type: PLAINTEXT
       ServiceRole: !GetAtt CodeBuildServiceRole.Arn
       VpcConfig:
-        VpcId: !ImportValue VpcId
+        VpcId:
+          Fn::ImportValue:
+            !Sub "${ClusterName}-VPCID"
       LogsConfig:
         CloudWatchLogs:
           Status: ENABLED
@@ -54,15 +62,14 @@ Resources:
             Principal:
               Service: codebuild.amazonaws.com
             Action: sts:AssumeRole
-      Policies:
-        - PolicyName: FullAccessToECR
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action: "ecr:*"
-                Resource: "*"
-      Path: /
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly  # Read-only access to ECR
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser # Enhanced access to ECR (upload images)
+        - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess  # Full access to CloudWatch Logs
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy  # Permissions for CloudWatch Agent
+      Tags:
+        - Key: Name
+          Value: !Sub 'Coworking-CodeBuildServiceRole'
 
 
 Outputs:

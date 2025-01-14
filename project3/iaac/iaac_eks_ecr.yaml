@@ -259,6 +259,13 @@ Resources:
               - "ecr:CompleteLayerUpload"
 
 Outputs:
+
+  VPC: 
+    Description: A reference to the created VPC
+    Value: !Ref VPC
+    Export:
+      Name: !Sub ${ClusterName}-VPCID
+
   ClusterName:
     Description: The name of the EKS cluster
     Value: !Ref ClusterName
