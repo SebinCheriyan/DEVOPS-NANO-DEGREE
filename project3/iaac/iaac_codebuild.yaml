@@ -1,0 +1,71 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template to create an AWS CodeBuild project for Udacity Project (coworking).
+
+Resources:
+  # CodeBuild Project
+  CoworkingCodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: coworking
+      Description: A CodeBuild project for the coworking app.
+      Source:
+        Type: GITHUB
+        Location: https://github.com/SebinCheriyan/DEVOPS-NANO-DEGREE  # Replace with your actual GitHub repo URL
+        Auth:
+          Type: SECRETS_MANAGER
+          Resource: arn:aws:secretsmanager:us-east-1:112468614268:secret:seb_github_secret-wQSAH8  # Replace with your GitHub OAuth token ARN from Secrets Manager
+        buildspec: project3/config/buildspec.yml
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_MEDIUM
+        Image: aws/codebuild/amazonlinux-x86_64-standard:5.0
+        PrivilegedMode: true  # Required for Docker builds.
+        EnvironmentVariables:
+          - Name: AWS_DEFAULT_REGION
+            Value: "us-east-1"
+            Type: PLAINTEXT
+          - Name: AWS_ACCOUNT_ID
+            Value: "112468614268"
+            Type: PLAINTEXT
+          - Name: IMAGE_REPO_NAME
+            Value: "coworking"
+            Type: PLAINTEXT
+          - Name: IMAGE_TAG
+            Value: "0.0.1"
+            Type: PLAINTEXT
+      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
+      VpcConfig:
+        VpcId: !ImportValue VpcId
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+          GroupName: /aws/codebuild/coworking  # Name of the CloudWatch log group
+
+  # IAM Role for CodeBuild with ECR Policy
+  CodeBuildServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: FullAccessToECR
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: "ecr:*"
+                Resource: "*"
+      Path: /
+
+
+Outputs:
+  CodeBuildProjectName:
+    Description: The name of the CodeBuild project.
+    Value: !Ref CoworkingCodeBuildProject

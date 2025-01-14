@@ -1,0 +1,268 @@
+Description: CloudFormation template for Amazon EKS cluster with node group and AWS ECR.
+
+Parameters:
+  ClusterName:
+    Type: String
+    Default: EKS-Cluster-Udacity-Project
+    Description: The name of the EKS cluster.
+
+  RegistryRepoName:
+    Type: String
+    Default: coworking
+    Description: The name of the AWS ECR for Udacity project
+
+Resources:
+  # VPC
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ClusterName}-VPC'
+
+  # Internet Gateway
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub '${ClusterName}-IGW'
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  # Public Subnet 1
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ClusterName}-PublicSubnet1'
+
+  # Public Subnet 2
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ClusterName}-PublicSubnet2'
+
+  # Public Route Table
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+
+  # Route for Internet Gateway in Public Route Table
+  PublicRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  # Subnet1 Route Table Association
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+
+  # Subnet2 Route Table Association
+  PublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
+
+  # Security Group
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: EKS Security Group
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${ClusterName}-SG'
+
+  # EKS Cluster Service Role
+  EKSClusterRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: eks.amazonaws.com
+            Action: 
+              - sts:AssumeRole
+              - sts:TagSession
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
+        - arn:aws:iam::aws:policy/AmazonEKSServicePolicy
+        - arn:aws:iam::aws:policy/AmazonEKSBlockStoragePolicy
+        - arn:aws:iam::aws:policy/AmazonEKSComputePolicy
+        - arn:aws:iam::aws:policy/AmazonEKSLoadBalancingPolicy
+        - arn:aws:iam::aws:policy/AmazonEKSNetworkingPolicy
+      Tags:
+        - Key: Name
+          Value: !Sub '${ClusterName}-Role'
+
+  # EKS Cluster
+  EKSCluster:
+    Type: AWS::EKS::Cluster
+    Properties:
+      Name: !Ref ClusterName
+      ResourcesVpcConfig:
+        SubnetIds:
+          - !Ref PublicSubnet1
+          - !Ref PublicSubnet2
+        SecurityGroupIds:
+          - !Ref SecurityGroup
+      RoleArn: !GetAtt EKSClusterRole.Arn
+      Version: "1.31"
+      Logging:
+        ClusterLogging:
+          EnabledTypes:
+            - Type: api
+            - Type: audit
+            - Type: authenticator
+            - Type: controllerManager
+            - Type: scheduler
+
+  # Security Group for EKS Control Plane
+  EKSControlPlaneSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow full access to the EKS control plane
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: -1  # Allow all inbound traffic
+          FromPort: 0
+          ToPort: 0
+          CidrIp: 0.0.0.0/0  # Allow from anywhere
+      SecurityGroupEgress:
+        - IpProtocol: -1  # Allow all outbound traffic
+          FromPort: 0
+          ToPort: 0
+          CidrIp: 0.0.0.0/0  # Allow to anywhere
+
+  # Security Group for EKS Node Group (Worker Nodes)
+  EKSNodeSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow full access to the EKS node group
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: -1  # Allow all inbound traffic
+          FromPort: 0
+          ToPort: 0
+          CidrIp: 0.0.0.0/0  # Allow from anywhere
+      SecurityGroupEgress:
+        - IpProtocol: -1  # Allow all outbound traffic
+          FromPort: 0
+          ToPort: 0
+          CidrIp: 0.0.0.0/0  # Allow to anywhere
+
+
+  # Node IAM Role
+  NodeInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+        - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy 
+        - arn:aws:iam::aws:policy/AmazonEMRReadOnlyAccessPolicy_v2
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy  #Policy for CloudWatch Agent
+        - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess   #Policy for CloudWatch Agent
+      Tags:
+        - Key: Name
+          Value: !Sub '${ClusterName}-NodeInstanceRole'
+
+  # Node Group
+  NodeGroup:
+    Type: AWS::EKS::Nodegroup
+    Properties:
+      NodegroupName: !Sub '${ClusterName}-NodeGroup'
+      ClusterName: !Ref EKSCluster
+      NodeRole: !GetAtt NodeInstanceRole.Arn
+      Subnets:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+      ScalingConfig:
+        MinSize: 2
+        MaxSize: 2 
+        DesiredSize: 2
+      InstanceTypes:
+        - t4g.small
+      DiskSize: 10
+      AmiType: AL2_ARM_64
+
+  # # Enable CloudWatch Container Insights for CloudWatch
+  # CloudWatchContainerInsightsAddon:
+  #   Type: AWS::EKS::Addon                   
+  #   Properties:                             
+  #     ClusterName: !Ref EKSCluster           
+  #     AddonName: "amazon-cloudwatch-observability"
+  #     AddonVersion: "v3.0.0-eksbuild.1" # It seems the version is playing a major role to get this work in CloudWatch.                               
+  #     ServiceAccountRoleArn: !GetAtt NodeInstanceRole.Arn 
+  #     ResolveConflicts: OVERWRITE           
+      # ConfigurationValues: |                        
+      # { "containerInsights": "enabled" }
+
+  # ECR Repository.
+  ECRRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Ref RegistryRepoName
+      ImageTagMutability: IMMUTABLE
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      RepositoryPolicyText: 
+        Version: "2012-10-17"
+        Statement: 
+          - Sid: AllowPushPull
+            Effect: Allow
+            Principal: 
+              AWS: 
+                - "arn:aws:iam::112468614268:user/docker_seb"
+            Action: 
+              - "ecr:GetDownloadUrlForLayer"
+              - "ecr:BatchGetImage"
+              - "ecr:BatchCheckLayerAvailability"
+              - "ecr:PutImage"
+              - "ecr:InitiateLayerUpload"
+              - "ecr:UploadLayerPart"
+              - "ecr:CompleteLayerUpload"
+
+Outputs:
+  ClusterName:
+    Description: The name of the EKS cluster
+    Value: !Ref ClusterName
+
+  ClusterArn:
+    Description: The ARN of the EKS cluster
+    Value: !GetAtt EKSCluster.Arn
