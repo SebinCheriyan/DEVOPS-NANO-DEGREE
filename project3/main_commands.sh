@@ -1,3 +1,5 @@
+#Build EKS cluster and ECR with associated roles using the iaac_eks_ecr.yaml template.
+./create.sh eks-ecr-cluster iaac_eks_ecr.yaml
 
 #Set kubectl config
 aws eks --region us-east-1 update-kubeconfig --name EKS-Cluster-Udacity-Project
@@ -9,9 +11,11 @@ kubectl apply -f postgresql-deployment.yaml
 
 #kubectl commands to check the DB details.
 kubectl get pods
-kubectl exec -it postgresql-6654c4c8db-wkfx6 -- bash
+kubectl exec -it postgresql-6654c4c8db-jjk62 -- bash
 # then
 psql -U myuser -d mydatabase
+\l
+\dt
 
 # To port forward - create a service.
 kubectl apply -f postgresql-service.yaml
@@ -32,12 +36,14 @@ sudo apt install postgresql postgresql-contrib
 
 # Then check the table by connection to Postgres Server as follows.
 PGPASSWORD="$DB_PASSWORD" psql --host 127.0.0.1 -U myuser -d mydatabase -p 5433
+select * from users limit 10;
+select * from tokens limit 10;
 
 # App has been build and test local python environment. Now directly mocing Docker build.
 sudo apt update
 sudo apt install docker-ce docker-ce-cli containerd.io
 
-# Now build the image using the docker file created in analytics folder.
+# Now build the image using the docker file created in analytics folder. Go to analytics folder and run the command below.
 docker build -t test-coworking-analytics .
 
 #Test the image created using local host to use the port forearding to connect Postgres Server
