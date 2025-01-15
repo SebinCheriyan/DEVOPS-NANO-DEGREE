@@ -6,7 +6,8 @@ RUN apt install build-essential libpq-dev -y
 RUN pip install --upgrade pip setuptools wheel
 
 WORKDIR /src
-COPY project3/analytics/requirements.txt requirements.txt
+COPY project3/analytics/ .
+
 RUN pip install -r requirements.txt
 
 ENV DB_USERNAME=myuser
@@ -15,8 +16,8 @@ ENV DB_HOST=127.0.0.1
 ENV DB_PORT=5433
 ENV DB_NAME=mydatabase
 
-COPY project3/analytics/config.py config.py
-COPY project3/analytics/app.py app.py
+# COPY project3/analytics/config.py config.py
+# COPY project3/analytics/app.py app.py
 
 CMD ["python", "app.py"]
 # RUN python app.py
