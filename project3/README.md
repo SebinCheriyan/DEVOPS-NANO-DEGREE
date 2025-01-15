@@ -18,3 +18,6 @@ If there achanges or new feature addition, make the changes in the local clone r
 
 #### Updates on AWS resources
 All AWS resources have been created using cloudformation template. This can be find in the iaac folder in the main project repository. Made necessary changes and update the associated stack to reflect changes in resources.
+
+Please find a detailed step by step process for this project in DEVOPS-NANO-DEGREE/project3/utilities/project_commands.sh file with explanation.
+
