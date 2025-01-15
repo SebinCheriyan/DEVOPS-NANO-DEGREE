@@ -217,9 +217,9 @@ Resources:
         MaxSize: 2 
         DesiredSize: 2
       InstanceTypes:
-        - t4g.small
+        - t3.small
       DiskSize: 10
-      AmiType: AL2_ARM_64
+      AmiType: AL2_x86_64
 
   # # Enable CloudWatch Container Insights for CloudWatch
   # CloudWatchContainerInsightsAddon:

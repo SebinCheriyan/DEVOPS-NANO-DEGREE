@@ -58,20 +58,25 @@ curl 127.0.0.1:5153/api/reports/user_visits
 ./create.sh codebuilder-stack iaac_codebuild.yaml
 # Once it done then run the codebuild project created to create the image from the dockerfile in GIthub and push that to the coworking ECR repository. Check the version whether it updated with CODE_BUILD_NUMBER.
 
-# Now the image has created and pushed to the ECR repo. Let's deploy the app.
+# Now we have to create the image and push it to the ECR repo. Let's deploy the app.
+kubectl get svc # get the Host IP for postgres-service and update that in the configmap.yaml
+
 # Update the given configmap.yaml with secret details, DB details and user details. Then execute it.
 kubectl apply -f configmap.yaml
 
 #Run the below command to get the DB_PASSWORD as expected.
 kubectl get secret mysecret-postgres -o jsonpath="{.data.postgres-password}" | base64 -d
 
-#Update the details from configmap.yaml in coworking.yaml (Secrets and IMahe URI) and create the Service and Deployment.
+#Update the details from configmap.yaml in coworking.yaml (Secrets and IMahe URI), the image details URI from ECR repo and then create the Service and Deployment.
 kubectl apply -f coworking.yaml
+
+#Check deployments
+kubectl get deployments
 
 #Now run the below CURL command to verify the deployment.
 #first run the below command and get the external IP and port for the coworking Service.
 kubectl get svc
 
 #Use that value in the below curl command and execute.
-curl a99bbd2aef9f14cd789db3943aa14a40-1345046499.us-east-1.elb.amazonaws.com:5153/api/reports/daily_usage
-curl a99bbd2aef9f14cd789db3943aa14a40-1345046499.us-east-1.elb.amazonaws.com:5153/api/reports/user_visits
+curl aceebe4b2a5274d2bb4ececbcc91a7ad-2135839709.us-east-1.elb.amazonaws.com:5153/api/reports/daily_usage
+curl aceebe4b2a5274d2bb4ececbcc91a7ad-2135839709.us-east-1.elb.amazonaws.com:5153/api/reports/user_visits
